@@ -144,8 +144,10 @@ class Netrunner:
 
             potential_matches = [x[0] for x in possible_cards if x[1] >= 90]
 
-            #await self.bot.say(full_crosswalk[highest_card]['image_url'])
-            await self.bot.say(''.join([card_art_url, str(highest_card), '.png']))
+            if 'image_url' in full_crosswalk[highest_card].keys():
+                await self.bot.say(full_crosswalk[highest_card]['image_url'])
+            else:
+                await self.bot.say(''.join([card_art_url, str(highest_card), '.png']))
             if len(potential_matches) > 1:
                 await self.bot.say('I also found the following cards: ' + ', '.join(potential_matches[1:]))
 
