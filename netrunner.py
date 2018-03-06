@@ -28,12 +28,12 @@ class Netrunner:
                 'nbn': 'NBN'
                 }
 
-    def type_formatting(self, blob):
+    def _type_formatting(self, blob):
         type_code = blob.get('type_code', None)
         if type_code == 'agenda':
             return ''.join(['Advancements: ', str(blob.get('advancement_cost')), ', Agenda Points: ', str(blob.get('agenda_points'))])
         elif type_code == 'program':
-            return ''.join(['Install: ', str(blob.get('cost')), ', Strength: ', str(blob.get('strength', '-'))])
+            return ''.join(['Install: ', str(blob.get('cost')), ', Strength: ', str(blob.get('strength', '-')), ', MU: ', str(blob.get('memory_cost'))])
         elif type_code == 'ice':
             return_string = ''.join(['Rez: ', str(blob.get('cost')), ', Strength: ', str(blob.get('strength'))])
             if blob.get('trash_cost', None) is not None:
@@ -97,7 +97,7 @@ class Netrunner:
             return_string += ''.join([', Influence: ', str(blob.get('faction_cost'))])
         return_string +='\n'
         
-        return_string += self.type_formatting(blob)
+        return_string += self._type_formatting(blob)
         # Card Type Formatting
         # so to get emoji to show up, go on server
         # type in "\:EMOJINAME:" in chat
@@ -208,11 +208,6 @@ class Netrunner:
         corp_banned = format_text('Corp Banned Cards: ', mwl_cards['corp']['banned'])
         
         await self.bot.say('\n\n'.join([runner_restricted, corp_restricted, runner_banned, corp_banned]))
-
-    @commands.command()
-    async def unicorn(self):
-        await self.bot.say(':unicorn:')
-
 
 def setup(bot):
     bot.add_cog(Netrunner(bot))
