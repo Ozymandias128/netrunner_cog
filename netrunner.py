@@ -7,7 +7,7 @@ import time
 from fuzzywuzzy import fuzz, process
 
 class Netrunner:
-    """comment"""
+    """Netrunner!"""
 
     def __init__(self, bot):
         self.bot = bot
@@ -63,6 +63,26 @@ class Netrunner:
     def _call_endpoint(self, endpoint):
         return self.session.get(''.join([self.base_url, endpoint])).json()['data']
 
+    def _get_crosswalks(self):
+        resp = self._call_endpoint('cards')
+        title_crosswalk = {x['title']:x['code'] for x in resp}
+        full_crosswalk = {x['code']:x for x in resp}
+        return title_crosswalk, full_crosswalk
+
+    def _card_match(self, title_crosswalk, full_crosswalk, title):
+        card_titles = list(title_crosswalk.keys())
+        possible_cards = process.extract(title, card_titles, 
+                limit=10, scorer=fuzz.token_set_ratio)
+        for card in [x[0] for x in possible_cards]: 
+            if str(title).lower() == card.lower():
+                highest_card = title_crosswalk[card]
+                break
+            else:
+                highest_card = title_crosswalk[possible_cards[0][0]]
+        potential_matches = [x[0] for x in possible_cards if x[1] >= 90]
+        return highest_card, potential_matches
+
+
     def format_response(self, blob):
         return_string = ''
         if blob.get('uniqueness'):
@@ -97,23 +117,9 @@ class Netrunner:
         if len(title) == 0:
             await self.bot.say('Please include a title with your request! `!card TITLE`')
         else:
-            resp = self._call_endpoint('cards')
-
-            title_crosswalk = {x['title']:x['code'] for x in resp}
-            full_crosswalk = {x['code']:x for x in resp}
-
-            card_titles = list(title_crosswalk.keys())
-            possible_cards = process.extract(title, card_titles, 
-                limit=10, scorer=fuzz.token_set_ratio)
-            for card in [x[0] for x in possible_cards]: 
-              if str(title).lower() == card.lower():
-                  highest_card = title_crosswalk[card]
-                  break
-              else:
-                  highest_card = title_crosswalk[possible_cards[0][0]]
-
-            potential_matches = [x[0] for x in possible_cards if x[1] >= 90]
-
+            title_crosswalk, full_crosswalk = self._get_crosswalks()
+            highest_card, potential_matches = self._card_match(title_crosswalk, 
+                    full_crosswalk, title)
             await self.bot.say(self.format_response(full_crosswalk[highest_card]))
             if len(potential_matches) > 1:
                 await self.bot.say('I also found the following cards: ' + ', '.join(potential_matches[1:]))  
@@ -128,21 +134,11 @@ class Netrunner:
         if len(title) == 0:
             await self.bot.say('Please include a title with your request! `!fullart TITLE`')
         else:
-            resp = self._call_endpoint('cards')
-            title_crosswalk = {x['title']:x['code'] for x in resp}
-            full_crosswalk = {x['code']:x for x in resp}
-
-            card_titles = list(title_crosswalk.keys())
-            possible_cards = process.extract(title, card_titles,
-                    limit=10, scorer=fuzz.token_set_ratio)
-            for card in [x[0] for x in possible_cards]:
-                if str(title).lower() == card.lower():
-                    highest_card = title_crosswalk[card]
-                    break
-                else:
-                    highest_card = title_crosswalk[possible_cards[0][0]]
-
-            potential_matches = [x[0] for x in possible_cards if x[1] >= 90]
+            title_crosswalk, full_crosswalk = self._get_crosswalks()
+            highest_card, potential_matches = self._card_match(
+                    title_crosswalk,
+                    full_crosswalk,
+                    title)
 
             if 'image_url' in full_crosswalk[highest_card].keys():
                 await self.bot.say(full_crosswalk[highest_card]['image_url'])
@@ -150,6 +146,48 @@ class Netrunner:
                 await self.bot.say(''.join([card_art_url, str(highest_card), '.png']))
             if len(potential_matches) > 1:
                 await self.bot.say('I also found the following cards: ' + ', '.join(potential_matches[1:]))
+
+    @commands.command()
+    async def mwl(self, *args):
+        """Details current MWL cards"""
+
+        mwl_cards = {
+                'runner': {
+                    'restricted': [],
+                    'banned': []
+                    },
+                'corp': {
+                    'restricted': [],
+                    'banned': []
+                    }
+                }
+        _, full_crosswalk = self._get_crosswalks()
+        resp = self._call_endpoint('mwl')
+        active_part = [version['cards'] for version in resp if version['active']]
+        for card in active_part[0].items():
+            full_card_info = full_crosswalk[card[0]]
+            if card[1].get('is_restricted', None):
+                if full_card_info['side_code'] == 'runner':
+                    mwl_cards['runner']['restricted'].append(full_card_info['title'])
+                else:
+                    mwl_cards['corp']['restricted'].append(full_card_info['title'])
+            else:
+                if full_card_info['side_code'] == 'runner':
+                    mwl_cards['runner']['banned'].append(full_card_info['title'])
+                else:
+                    mwl_cards['corp']['banned'].append(full_card_info['title'])
+        
+        def format_text(front_text, cards):
+            return '**' + front_text + '**' + ', '.join(sorted(cards))
+
+        runner_restricted = format_text('Runner Restricted Cards: ', mwl_cards['runner']['restricted'])
+        runner_banned = format_text('Runner Banned Cards: ', mwl_cards['runner']['banned'])
+        corp_restricted = format_text('Corp Restricted Cards: ', mwl_cards['corp']['restricted'])
+        corp_banned = format_text('Corp Banned Cards: ', mwl_cards['corp']['banned'])
+        
+        await self.bot.say('\n\n'.join([runner_restricted, corp_restricted, runner_banned, corp_banned]))
+
+
 
 
 def setup(bot):
