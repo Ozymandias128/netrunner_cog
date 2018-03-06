@@ -26,6 +26,14 @@ class Netrunner:
                 'adam': 'Adam', 
                 'criminal': 'Criminal',
                 'nbn': 'NBN'
+               }
+        self.custom_emoji = {
+                'click': '<:click:420722769899290625>',
+                'credit': '<:credit:420722796352765962>',
+                'trash': '<:trash:420725872601858048>',
+                'mu': '<:mu:420727146533617665>',
+                'link': '<:baselink:420727146533617665>',
+                'subroutine': '<:subroutine:420728955474280448>'
                 }
 
     def _type_formatting(self, blob):
@@ -59,6 +67,16 @@ class Netrunner:
             return ''.join(['Install: ', str(blob.get('cost'))])
         else:
             return ''
+    
+    def _card_text_formatting(self, blob):
+        for emoji in ['click', 'credit', 'trash', 'mu', 'link', 'subroutine']:
+            rep = '[' + emoji + ']'
+            blob = blob.replace(rep, self.custom_emoji[emoji])
+        blob = blob.replace('<strong>', '**')
+        blob = blob.replace('</strong>', '**')
+        blob = blob.replace('<trace>', '(_')
+        blob = blob.replace('</trace>', '_)')
+        return blob
 
     def _call_endpoint(self, endpoint):
         return self.session.get(''.join([self.base_url, endpoint])).json()['data']
@@ -102,7 +120,7 @@ class Netrunner:
         # so to get emoji to show up, go on server
         # type in "\:EMOJINAME:" in chat
         # that's the mention part
-        card_text = blob.get('text', '')
+        card_text = self._card_text_formatting(blob.get('text', ''))
         return_string += ''.join(['\n', card_text, '\n'])
         if blob.get('flavor', None) is not None:
             return_string += ''.join(['\n', '*', blob.get('flavor', ''), '*\n'])
