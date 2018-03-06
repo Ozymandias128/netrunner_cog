@@ -83,7 +83,7 @@ class Netrunner:
         return highest_card, potential_matches
 
 
-    def format_response(self, blob):
+    def _format_response(self, blob, in_mwl):
         return_string = ''
         if blob.get('uniqueness'):
             return_string += '♦ '
@@ -106,7 +106,28 @@ class Netrunner:
         return_string += ''.join(['\n', card_text, '\n'])
         if blob.get('flavor', None) is not None:
             return_string += ''.join(['\n', '*', blob.get('flavor', ''), '*\n'])
+        if in_mwl is not None:
+            return_string += ''.join(['\n', in_mwl])
         return return_string
+
+    def _check_mwl(self, highest_card):
+        resp = self._call_endpoint('mwl')
+        active = [version for version in resp if version['active']]
+        active_part = [active[0]['cards']]
+
+        mwl_name = active[0]['name']
+        mwl_date = active[0]['date_start']
+        current_mwl = mwl_name + ' (' + mwl_date + ')'
+
+        restricted_cards = [card[0] for card in active_part[0].items() if card[1].get('is_restricted')]
+        banned_cards = [card[0] for card in active_part[0].items() if card[0] not in restricted_cards]
+        if highest_card in restricted_cards:
+            return ':unicorn: **Restricted** as of ' + current_mwl
+        elif highest_card in banned_cards:
+            return ':unicorn: **Banned** as of ' + current_mwl
+        else:
+            return None
+
         
     @commands.command()
     async def card(self, *args):
@@ -120,7 +141,8 @@ class Netrunner:
             title_crosswalk, full_crosswalk = self._get_crosswalks()
             highest_card, potential_matches = self._card_match(title_crosswalk, 
                     full_crosswalk, title)
-            await self.bot.say(self.format_response(full_crosswalk[highest_card]))
+            in_mwl = self._check_mwl(highest_card)
+            await self.bot.say(self._format_response(full_crosswalk[highest_card], in_mwl))
             if len(potential_matches) > 1:
                 await self.bot.say('I also found the following cards: ' + ', '.join(potential_matches[1:]))  
 
@@ -187,7 +209,9 @@ class Netrunner:
         
         await self.bot.say('\n\n'.join([runner_restricted, corp_restricted, runner_banned, corp_banned]))
 
-
+    @commands.command()
+    async def unicorn(self):
+        await self.bot.say(':unicorn:')
 
 
 def setup(bot):
