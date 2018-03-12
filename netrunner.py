@@ -35,6 +35,16 @@ class Netrunner:
                 'link': '<:baselink:420727146533617665>',
                 'subroutine': '<:subroutine:420728955474280448>'
                 }
+        self.big_boxes = [
+                'Core Set',
+                'Creation and Control',
+                'Honor and Profit',
+                'Order and Chaos',
+                'Data and Destiny',
+                'Terminal Directive',
+                'Revised Core Set',
+                'Reign and Reverie'
+                ]
 
     def _type_formatting(self, blob):
         type_code = blob.get('type_code', None)
@@ -87,14 +97,37 @@ class Netrunner:
         full_crosswalk = {x['code']:x for x in resp}
         return title_crosswalk, full_crosswalk
 
+    def _check_rotation(self, card_json):
+        packs = self._call_endpoint('packs')
+        cycles = self._call_endpoint('cycles')
+        for pack in packs:
+            if pack['code'] == card_json['pack_code']:
+                cycle_id = pack['cycle_code']
+                pack_full_name = pack['name']
+                if pack_full_name in self.big_boxes:
+                    pack_full_name = ''
+            else:
+                pass
+        for cycle in cycles:
+            if cycle['code'] == cycle_id:
+                rotation_status = cycle['rotated']
+                cycle_full_name = cycle['name']
+            else:
+                pass
+        return rotation_status, pack_full_name, cycle_full_name
+
+
     def _card_match(self, title_crosswalk, full_crosswalk, title):
         card_titles = list(title_crosswalk.keys())
         possible_cards = process.extract(title, card_titles, 
                 limit=10, scorer=fuzz.token_set_ratio)
         for card in [x[0] for x in possible_cards]: 
             if str(title).lower() == card.lower():
-                highest_card = title_crosswalk[card]
-                break
+                if self._check_rotation(full_crosswalk[title_crosswalk[card]])[0]:
+                    highest_card = title_crosswalk[card]
+                    break
+                else:
+                    pass
             else:
                 highest_card = title_crosswalk[possible_cards[0][0]]
         potential_matches = [x[0] for x in possible_cards if x[1] >= 90]
@@ -106,6 +139,11 @@ class Netrunner:
         if blob.get('uniqueness'):
             return_string += '♦ '
         return_string += ''.join(['**', blob.get('title', ''), '**\n'])
+        rotated, pack_name, cycle_name = self._check_rotation(blob)
+        if rotated:
+            return_string += ':potato: '
+        return_string += ''.join(['**', cycle_name, '** - _', 
+            pack_name, '_ (', str(blob.get('position', '')), ')\n'])
         return_string += ''.join(['*', self.faction_codes[blob.get('faction_code', None)], '*\n'])
 
         return_string += ''.join(['*', blob.get('type_code', '').title(), '*'])
@@ -116,10 +154,6 @@ class Netrunner:
         return_string +='\n'
         
         return_string += self._type_formatting(blob)
-        # Card Type Formatting
-        # so to get emoji to show up, go on server
-        # type in "\:EMOJINAME:" in chat
-        # that's the mention part
         card_text = self._card_text_formatting(blob.get('text', ''))
         return_string += ''.join(['\n', card_text, '\n'])
         if blob.get('flavor', None) is not None:
