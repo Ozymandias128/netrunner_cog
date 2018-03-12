@@ -86,6 +86,8 @@ class Netrunner:
         blob = blob.replace('</strong>', '**')
         blob = blob.replace('<trace>', '(_')
         blob = blob.replace('</trace>', '_)')
+        blob = blob.replace('<errata>', '_')
+        blob = blob.replace('</errata>', '_')
         return blob
 
     def _call_endpoint(self, endpoint):
