@@ -1,12 +1,12 @@
 import discord
-from discord.ext import commands
+from redbot.core import commands
 import aiohttp
 import requests as r
 import cachecontrol
 import time
 from fuzzywuzzy import fuzz, process
 
-class Netrunner:
+class Netrunner(commands.Cog):
     """Netrunner!"""
 
     def __init__(self, bot):
@@ -23,7 +23,7 @@ class Netrunner:
                 'sunny-lebeau': 'Sunny Lebeau',
                 'neutral-runner': 'Neutral',
                 'neutral-corp': 'Neutral',
-                'adam': 'Adam', 
+                'adam': 'Adam',
                 'criminal': 'Criminal',
                 'nbn': 'NBN'
                }
@@ -60,7 +60,7 @@ class Netrunner:
         elif type_code == 'identity':
             if blob.get('influence_limit') is None:
                 influence = '∞'
-            else: 
+            else:
                 influence = str(blob.get('influence_limit'))
             return_string = ''.join(['Deck Size: ', str(blob.get('minimum_deck_size')), ', Influence: ', influence])
             if blob.get('base_link', None) is not None:
@@ -68,7 +68,7 @@ class Netrunner:
             return return_string
         elif type_code in ['asset', 'upgrade']:
             return ''.join(['Rez: ', str(blob.get('cost')), ', Trash Cost: ', str(blob.get('trash_cost'))])
-        elif type_code in ['operation', 'event']: 
+        elif type_code in ['operation', 'event']:
             return_string = ''.join(['Cost: ', str(blob.get('cost'))])
             if blob.get('trash_cost', None) is not None:
                 return_string += ''.join([', Trash Cost: ', str(blob.get('trash_cost'))])
@@ -77,7 +77,7 @@ class Netrunner:
             return ''.join(['Install: ', str(blob.get('cost'))])
         else:
             return ''
-    
+
     def _card_text_formatting(self, blob):
         for emoji in ['click', 'credit', 'trash', 'mu', 'link', 'subroutine']:
             rep = '[' + emoji + ']'
@@ -121,9 +121,9 @@ class Netrunner:
 
     def _card_match(self, title_crosswalk, full_crosswalk, title):
         card_titles = list(title_crosswalk.keys())
-        possible_cards = process.extract(title, card_titles, 
+        possible_cards = process.extract(title, card_titles,
                 limit=10, scorer=fuzz.token_set_ratio)
-        for card in [x[0] for x in possible_cards]: 
+        for card in [x[0] for x in possible_cards]:
             if str(title).lower() == card.lower():
                 if self._check_rotation(full_crosswalk[title_crosswalk[card]])[0]:
                     highest_card = title_crosswalk[card]
@@ -144,7 +144,7 @@ class Netrunner:
         rotated, pack_name, cycle_name = self._check_rotation(blob)
         if rotated:
             return_string += ':potato: '
-        return_string += ''.join(['**', cycle_name, '** - _', 
+        return_string += ''.join(['**', cycle_name, '** - _',
             pack_name, '_ (', str(blob.get('position', '')), ')\n'])
         return_string += ''.join(['*', self.faction_codes[blob.get('faction_code', None)], '*\n'])
 
@@ -154,7 +154,7 @@ class Netrunner:
         if blob.get('faction_cost', None) is not None:
             return_string += ''.join([', Influence: ', str(blob.get('faction_cost'))])
         return_string +='\n'
-        
+
         return_string += self._type_formatting(blob)
         card_text = self._card_text_formatting(blob.get('text', ''))
         return_string += ''.join(['\n', card_text, '\n'])
@@ -182,33 +182,33 @@ class Netrunner:
         else:
             return None
 
-        
+
     @commands.command()
-    async def card(self, *args):
+    async def card(self, ctx, *args):
         """Find card by <title>"""
 
         title = ' '.join(args)
-    
+
         if len(title) == 0:
-            await self.bot.say('Please include a title with your request! `!card TITLE`')
+            await ctx.send('Please include a title with your request! `!card TITLE`')
         else:
             title_crosswalk, full_crosswalk = self._get_crosswalks()
-            highest_card, potential_matches = self._card_match(title_crosswalk, 
+            highest_card, potential_matches = self._card_match(title_crosswalk,
                     full_crosswalk, title)
             in_mwl = self._check_mwl(highest_card)
-            await self.bot.say(self._format_response(full_crosswalk[highest_card], in_mwl))
+            await ctx.send(self._format_response(full_crosswalk[highest_card], in_mwl))
             if len(potential_matches) > 1:
-                await self.bot.say('I also found the following cards: ' + ', '.join(potential_matches[1:]))  
+                await ctx.send('I also found the following cards: ' + ', '.join(potential_matches[1:]))
 
     @commands.command()
-    async def fullart(self, *args):
+    async def fullart(self, ctx, *args):
         """Show card art by <title>"""
 
         title = ' '.join(args)
         card_art_url = 'https://netrunnerdb.com/card_image/'
 
         if len(title) == 0:
-            await self.bot.say('Please include a title with your request! `!fullart TITLE`')
+            await ctx.send('Please include a title with your request! `!fullart TITLE`')
         else:
             title_crosswalk, full_crosswalk = self._get_crosswalks()
             highest_card, potential_matches = self._card_match(
@@ -217,14 +217,14 @@ class Netrunner:
                     title)
 
             if 'image_url' in full_crosswalk[highest_card].keys():
-                await self.bot.say(full_crosswalk[highest_card]['image_url'])
+                await ctx.send(full_crosswalk[highest_card]['image_url'])
             else:
-                await self.bot.say(''.join([card_art_url, str(highest_card), '.png']))
+                await ctx.send(''.join([card_art_url, str(highest_card), '.png']))
             if len(potential_matches) > 1:
-                await self.bot.say('I also found the following cards: ' + ', '.join(potential_matches[1:]))
+                await ctx.send('I also found the following cards: ' + ', '.join(potential_matches[1:]))
 
     @commands.command()
-    async def mwl(self, *args):
+    async def mwl(self, ctx, *args):
         """Details current MWL cards"""
 
         mwl_cards = {
@@ -252,7 +252,7 @@ class Netrunner:
                     mwl_cards['runner']['banned'].append(full_card_info['title'])
                 else:
                     mwl_cards['corp']['banned'].append(full_card_info['title'])
-        
+
         def format_text(front_text, cards):
             return '**' + front_text + '**' + ', '.join(sorted(cards))
 
@@ -260,8 +260,8 @@ class Netrunner:
         runner_banned = format_text('Runner Banned Cards: ', mwl_cards['runner']['banned'])
         corp_restricted = format_text('Corp Restricted Cards: ', mwl_cards['corp']['restricted'])
         corp_banned = format_text('Corp Banned Cards: ', mwl_cards['corp']['banned'])
-        
-        await self.bot.say('\n\n'.join([runner_restricted, corp_restricted, runner_banned, corp_banned]))
+
+        await ctx.send('\n\n'.join([runner_restricted, corp_restricted, runner_banned, corp_banned]))
 
 def setup(bot):
     bot.add_cog(Netrunner(bot))
