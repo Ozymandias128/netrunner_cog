@@ -28,12 +28,12 @@ class Netrunner(commands.Cog):
                 'nbn': 'NBN'
                }
         self.custom_emoji = {
-                'click': '<:click:420722769899290625>',
-                'credit': '<:credit:420722796352765962>',
-                'trash': '<:trash:420725872601858048>',
-                'mu': '<:mu:420727146533617665>',
-                'link': '<:baselink:420727146533617665>',
-                'subroutine': '<:subroutine:420728955474280448>'
+                'click': '<:click:570269063981563935>',
+                'credit': '<:credit:570269063981563935>',
+                'trash': '<:trash:570269063981563935>',
+                'mu': '<:mu:570269063981563935>',
+                'link': '<:baselink:570269063981563935>',
+                'subroutine': '<:subroutine:570269063981563935>'
                 }
         self.big_boxes = [
                 'Core Set',
